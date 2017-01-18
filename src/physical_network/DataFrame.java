@@ -8,6 +8,8 @@
 
 package physical_network;
 
+import java.util.Arrays;
+
 /**
  * Encapsulates the data for a network 'data frame'.
  * At the moment this just includes a payload byte array.
@@ -21,6 +23,7 @@ public class DataFrame {
 	
 	public final byte[] payload;
 	private int destination = 0;
+	private int source = 0;
 	private byte[] header; // Consider changing to public like payload
 		
 	public DataFrame(String payload) {
@@ -80,20 +83,28 @@ public class DataFrame {
 		return frame;
 	}	
 
-	private static short checksum(byte[] buffer) {
+	private static byte checksum(byte[] buffer) {
 		short sum = 0;
 		int buffSize = buffer.length;
 		for (int i=0; i<buffSize; i++) {
 			sum += buffer[i];
 		}
 
-		sum = (short) ~sum;
 
-		return sum;
+
+		return (byte) ~sum;
 	}
 
 	public byte[] getHeader() {
 		return header;
+	}
+
+	private void makeHeader() {
+		header = new byte[4];
+		header[0] = (byte) source;
+		header[1] = (byte) destination;
+		header[3] = checksum(Arrays.copyOfRange(header, 0, 1));
+		header[4] = checksum(payload);
 	}
 }
 
