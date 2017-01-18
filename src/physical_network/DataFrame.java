@@ -21,6 +21,7 @@ public class DataFrame {
 	
 	public final byte[] payload;
 	private int destination = 0;
+	private byte[] header; // Consider changing to public like payload
 		
 	public DataFrame(String payload) {
 		this.payload = payload.getBytes();
@@ -29,6 +30,7 @@ public class DataFrame {
 	public DataFrame(String payload, int destination) {
 		this.payload = payload.getBytes();
 		this.destination = destination;
+		this.header = new byte[0];
 	}
 
 	public DataFrame(byte[] payload) {
@@ -72,8 +74,26 @@ public class DataFrame {
 	 * frame is transmitted and received.
 	 */
 	public byte[] getTransmittedBytes() {
-		return payload;
+		byte[] frame = new byte[header.length + payload.length];
+		System.arraycopy(header, 0, frame, 0, header.length);
+		System.arraycopy(payload, 0, frame, header.length, payload.length);
+		return frame;
 	}	
-	
+
+	private static short checksum(byte[] buffer) {
+		short sum = 0;
+		int buffSize = buffer.length;
+		for (int i=0; i<buffSize; i++) {
+			sum += buffer[i];
+		}
+
+		sum = (short) ~sum;
+
+		return sum;
+	}
+
+	public byte[] getHeader() {
+		return header;
+	}
 }
 
