@@ -92,8 +92,7 @@ public class NetworkCard {
 
 	public DataFrame receive() throws InterruptedException {
 		DataFrame data = inputQueue.take();
-		return data.getPayload();
-		// TODO: 19/01/2017 Fix this method 
+		return data;
 	}
 
 	/*
@@ -199,7 +198,7 @@ public class NetworkCard {
 					do {
 
 						receivedByte = receiveByte();
-
+						// TODO: 19/01/2017 Uncomment print 
 						System.out.println(deviceName + " RECEIVED BYTE = " + Integer.toHexString(receivedByte & 0xFF));
 
 						if ((receivedByte & 0xFF) != 0x7E) {
@@ -217,7 +216,7 @@ public class NetworkCard {
 
 					// Block receiving data if queue full.
 					DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
-					if (newFrame.checkHeader(deviceNumber, 0)) {
+					if (newFrame.checkHeader(deviceNumber, 1)) {
 						inputQueue.put(newFrame);
 						// TODO: 19/01/2017  Make sendacknowledgement
 					}
