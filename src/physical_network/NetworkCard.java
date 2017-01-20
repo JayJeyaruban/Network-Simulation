@@ -8,6 +8,7 @@
 
 package physical_network;
 
+import javax.xml.crypto.Data;
 import java.util.Arrays;
 import java.util.concurrent.*;
 
@@ -46,6 +47,8 @@ public class NetworkCard {
 
 	private int framesSent = 0;
 
+	private int framesReceived = 0;
+
 	// Output queue for dataframes being transmitted.
 	private LinkedBlockingQueue<DataFrame> outputQueue = new LinkedBlockingQueue<DataFrame>(QUEUE_SIZE);
 
@@ -57,6 +60,9 @@ public class NetworkCard {
 
 	// Receiver thread.
 	private Thread rxThread;
+
+	private byte[] ackToSend = {0, 0};
+	private boolean ackReceived = false;
 
 	/**
 	 * NetworkCard constructor.
@@ -70,6 +76,7 @@ public class NetworkCard {
 
 		this.deviceNumber = number;
 		this.deviceName = "NetCard" + number;
+		ackToSend[1] = (byte) deviceNumber;
 		this.wire = wire;
 
 		txThread = this.new TXThread();
@@ -95,6 +102,7 @@ public class NetworkCard {
 		return data;
 	}
 
+
 	/*
 	 * Private inner thread class that transmits data.
 	 */
@@ -104,15 +112,45 @@ public class NetworkCard {
 
 			try {
 				while (true) {
+//					System.out.println(deviceNumber + " " + ackToSend[0]);
 
 					// Blocks if nothing is in queue.
 					DataFrame frame = outputQueue.take();
-					transmitFrame(frame);
+
+					if (ackToSend[0] == 0)
+						frame.setHeader(++framesSent);
+					else
+						System.out.println(deviceNumber + " - sending ack");
+					do {
+						transmitFrame(frame);
+						// TODO: 19/01/2017 waitForAcknowledgement
+						if (!(ackToSend[0] == 0))
+							break;
+					} while (waitingForAcknowledgement());
 				}
 			} catch (InterruptedException except) {
 				System.out.println(deviceName + " Transmitter Thread Interrupted - terminated.");
 			}
 
+		}
+
+		private synchronized boolean waitingForAcknowledgement() {
+			System.out.println(deviceNumber + " - waiting for ack..");
+			long time = System.currentTimeMillis();
+			while (!ackReceived) {
+				try {
+					wait(30000);
+					if (System.currentTimeMillis() - time > 30000) {
+						System.out.println("No ack.. Resending...");
+						return true;
+					}
+				} catch (InterruptedException e) {
+
+				}
+			}
+			System.out.println(deviceNumber + " - Ack received");
+			ackReceived = false;
+			return false;
 		}
 
 		/**
@@ -124,8 +162,6 @@ public class NetworkCard {
 		public void transmitFrame(DataFrame frame) throws InterruptedException {
 
 			if (frame != null) {
-
-				frame.setHeader(++framesSent);
 
 				// Low voltage signal to get ready ...
 				wire.setVoltage(deviceName, LOW_VOLTAGE);
@@ -145,8 +181,10 @@ public class NetworkCard {
 
 				// Append a 0x7E to terminate frame.
 				transmitByte((byte) 0x7E);
-			}
 
+				wire.setVoltage(deviceName, 0);
+				sleep(PULSE_WIDTH * 3);
+			}
 
 		}
 
@@ -200,7 +238,6 @@ public class NetworkCard {
 						receivedByte = receiveByte();
 						// TODO: 19/01/2017 Uncomment print 
 						System.out.println(deviceName + " RECEIVED BYTE = " + Integer.toHexString(receivedByte & 0xFF));
-
 						if ((receivedByte & 0xFF) != 0x7E) {
 							// Unstuff if escaped.        			
 							if (receivedByte == 0x7D) {
@@ -214,11 +251,21 @@ public class NetworkCard {
 
 					} while ((receivedByte & 0xFF) != 0x7E);
 
+
 					// Block receiving data if queue full.
-					DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
-					if (newFrame.checkHeader(deviceNumber, 1)) {
-						inputQueue.put(newFrame);
-						// TODO: 19/01/2017  Make sendacknowledgement
+					if (bytePayloadIndex == 2) {
+//						System.out.println("Putting together ack...");
+						byte[] ack = Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex);
+						if (ack[0] == deviceNumber &&
+								ack[1] == framesSent)
+							receivedAck();
+					} else {
+						DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
+						if (newFrame.checkHeader(deviceNumber, ++framesReceived)) {
+							sendAcknowledgement(newFrame.getHeader()[0]);
+							if (!inputQueue.contains(newFrame))
+								inputQueue.put(newFrame);
+						}
 					}
 				}
 
@@ -226,6 +273,16 @@ public class NetworkCard {
 				System.out.println(deviceName + " Interrupted: " + getName());
 			}
 
+		}
+
+		private void receivedAck() {
+			System.out.println(deviceNumber + " - Announcing ack received.");
+			ackReceived = true;
+//			notifyAll();
+//			txThread.notify();
+			synchronized (txThread) {
+				txThread.notify();
+			}
 		}
 
 		public byte receiveByte() throws InterruptedException {
@@ -251,8 +308,17 @@ public class NetworkCard {
 
 				sleep(PULSE_WIDTH);
 			}
-
 			return value;
+		}
+
+		private void sendAcknowledgement(int dest) throws InterruptedException {
+//			System.out.println("test " + dest);
+			ackToSend[0] = (byte) dest;
+			ackToSend[1] = (byte) framesReceived;
+			DataFrame dataFrame = new DataFrame();
+			dataFrame.setHeader(ackToSend);
+			dataFrame.setIsAck(true);
+			outputQueue.put(dataFrame);
 		}
 
 	}

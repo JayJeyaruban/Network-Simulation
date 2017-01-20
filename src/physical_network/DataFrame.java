@@ -22,11 +22,12 @@ public class DataFrame {
 
 	private final static int HEADER_CHECKSUM_INDEX = 3;
 	private final static int PAYLOAD_CHECKSUM_INDEX = 4;
-	public final byte[] payload;
+	private byte[] payload;
 	private int destination = 0;
 	private int source = 0;
 	private byte[] header; // Consider changing to public like payload
 	private int frameNumber;
+	private boolean isAck = false;
 
 	public DataFrame(String payload) {
 		this.payload = payload.getBytes();
@@ -42,9 +43,12 @@ public class DataFrame {
 		this.payload = Arrays.copyOfRange(input, PAYLOAD_CHECKSUM_INDEX + 1, input.length);
 	}
 
-	public DataFrame(byte[] payload, int destination) {
-		this.payload = payload;
-		this.destination = destination;
+	public DataFrame() {
+
+	}
+
+	public void setIsAck(boolean ack) {
+		this.isAck = ack;
 	}
 
 	public int getDestination() {
@@ -79,9 +83,10 @@ public class DataFrame {
 	 * frame is transmitted and received.
 	 */
 	public byte[] getTransmittedBytes() {
-		byte[] frame = new byte[header.length + payload.length];
+		byte[] frame = new byte[header.length + ((isAck) ? 0 : payload.length)];
 		System.arraycopy(header, 0, frame, 0, header.length);
-		System.arraycopy(payload, 0, frame, header.length, payload.length);
+		if (!isAck)
+			System.arraycopy(payload, 0, frame, header.length, payload.length);
 		return frame;
 	}
 
@@ -101,6 +106,11 @@ public class DataFrame {
 		return header;
 	}
 
+	public void setHeader(byte[] bytes) {
+		this.header = bytes;
+	}
+
+	// TODO: 20/01/2017 Consider getting rid of this method
 	public void setHeader(int num) {
 		this.frameNumber = num;
 		makeHeader();
