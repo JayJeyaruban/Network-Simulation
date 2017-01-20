@@ -233,24 +233,23 @@ public class NetworkCard {
 					int bytePayloadIndex = 0;
 					byte receivedByte;
 
-					do {
-
+					while (true) {
 						receivedByte = receiveByte();
-						// TODO: 19/01/2017 Uncomment print 
-						System.out.println(deviceName + " RECEIVED BYTE = " + Integer.toHexString(receivedByte & 0xFF));
-						if ((receivedByte & 0xFF) != 0x7E) {
-							// Unstuff if escaped.        			
-							if (receivedByte == 0x7D) {
-								receivedByte = receiveByte();
-								System.out.println(deviceName + " ESCAPED RECEIVED BYTE = " + Integer.toHexString(receivedByte & 0xFF));
-							}
 
-							bytePayload[bytePayloadIndex] = receivedByte;
-							bytePayloadIndex++;
+						if ((receivedByte & 0xFF) == 0x7E) break;
+
+						System.out.println(deviceName + " RECEIVED BYTE = " + Integer.toHexString(receivedByte & 0xFF));
+
+						// Unstuff if escaped.
+						if (receivedByte == 0x7D) {
+							receivedByte = receiveByte();
+							System.out.println(deviceName + " ESCAPED RECEIVED BYTE = " + Integer.toHexString(receivedByte & 0xFF));
 						}
 
-					} while ((receivedByte & 0xFF) != 0x7E);
+						bytePayload[bytePayloadIndex] = receivedByte;
+						bytePayloadIndex++;
 
+					}
 
 					// Block receiving data if queue full.
 					if (bytePayloadIndex == 2) {
