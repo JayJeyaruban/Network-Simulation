@@ -107,9 +107,9 @@ public class NetworkCard {
 	 * Private inner thread class that transmits data.
 	 */
 	private class TXThread extends Thread {
+		private int sendAttempts = 0;
 
 		public void run() {
-
 			try {
 				while (true) {
 //					System.out.println(deviceNumber + " " + ackToSend[0]);
@@ -123,8 +123,8 @@ public class NetworkCard {
 						System.out.println(deviceNumber + " - sending ack");
 					do {
 						transmitFrame(frame);
-						// TODO: 19/01/2017 waitForAcknowledgement
-						if (!(ackToSend[0] == 0))
+						sendAttempts++;
+						if (!(ackToSend[0] == 0) || sendAttempts > 2)
 							break;
 					} while (waitingForAcknowledgement());
 				}
@@ -149,6 +149,7 @@ public class NetworkCard {
 				}
 			}
 			System.out.println(deviceNumber + " - Ack received");
+			sendAttempts = 0;
 			ackReceived = false;
 			return false;
 		}
@@ -286,12 +287,15 @@ public class NetworkCard {
 
 		public byte receiveByte() throws InterruptedException {
 
-			double thresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
-//			double thresholdVoltage = 2;
+			double upperThresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
+			double lowerThresholdVoltage = (HIGH_VOLTAGE + 2.0 * LOW_VOLTAGE) / 3;
 			byte value = 0;
 
-			while (wire.getVoltage(deviceName) < thresholdVoltage) {
+			while (wire.getVoltage(deviceName) > lowerThresholdVoltage) {
 				sleep(PULSE_WIDTH / 10);
+			}
+
+			while (wire.getVoltage(deviceName) < upperThresholdVoltage) {
 			}
 
 			// Sleep till middle of next pulse.
@@ -302,7 +306,7 @@ public class NetworkCard {
 
 				value *= 2;
 
-				if (wire.getVoltage(deviceName) > thresholdVoltage) {
+				if (wire.getVoltage(deviceName) > upperThresholdVoltage) {
 					value += 1;
 				}
 
