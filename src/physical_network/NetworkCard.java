@@ -183,7 +183,7 @@ public class NetworkCard {
 				transmitByte((byte) 0x7E);
 
 				wire.setVoltage(deviceName, 0);
-				sleep(PULSE_WIDTH * 3);
+				sleep(PULSE_WIDTH * 5);
 			}
 
 		}
@@ -288,6 +288,7 @@ public class NetworkCard {
 		public byte receiveByte() throws InterruptedException {
 
 			double thresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
+//			double thresholdVoltage = 2;
 			byte value = 0;
 
 			while (wire.getVoltage(deviceName) < thresholdVoltage) {
