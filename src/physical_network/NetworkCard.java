@@ -287,23 +287,21 @@ public class NetworkCard {
 
 		public byte receiveByte() throws InterruptedException {
 
-			double upperThresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
-			double lowerThresholdVoltage = (HIGH_VOLTAGE + 2.0 * LOW_VOLTAGE) / 3;
+//			double upperThresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
+			double upperThresholdVoltage = HIGH_VOLTAGE + LOW_VOLTAGE / 3;
+//			double upperThresholdVoltage = HIGH_VOLTAGE + LOW_VOLTAGE / 3;
+//			double lowerThresholdVoltage = (HIGH_VOLTAGE + 2.0 * LOW_VOLTAGE) / 3;
+			double lowerThresholdVoltage = LOW_VOLTAGE + HIGH_VOLTAGE / 3;
 			byte value = 0;
 
-			while (wire.getVoltage(deviceName) > lowerThresholdVoltage) {
-				sleep(PULSE_WIDTH / 10);
-			}
-
-			while (wire.getVoltage(deviceName) < upperThresholdVoltage) {
-			}
+			while (!checkByteStart(upperThresholdVoltage, lowerThresholdVoltage));
 
 			// Sleep till middle of next pulse.
 			sleep(PULSE_WIDTH + PULSE_WIDTH / 2);
 
 			// Use 8 next pulses for byte.
 			for (int i = 0; i < 8; i++) {
-
+//				System.out.println(deviceNumber + " - i: " + i);
 				value *= 2;
 
 				if (wire.getVoltage(deviceName) > upperThresholdVoltage) {
@@ -313,6 +311,26 @@ public class NetworkCard {
 				sleep(PULSE_WIDTH);
 			}
 			return value;
+		}
+
+		private boolean checkByteStart(double upperV, double lowerV) throws InterruptedException {
+			while (wire.getVoltage(deviceName) > lowerV) {
+				sleep(PULSE_WIDTH / 10);
+			}
+
+			int i = 0;
+			while (wire.getVoltage(deviceName) < lowerV && i < 3) {
+				i++;
+				sleep(PULSE_WIDTH);
+			}
+
+			if (i == 3) {
+				while (wire.getVoltage(deviceName) < upperV) {
+					sleep(PULSE_WIDTH / 10);
+				}
+				return true;
+			} else
+				return false;
 		}
 
 		private void sendAcknowledgement(int dest) throws InterruptedException {
