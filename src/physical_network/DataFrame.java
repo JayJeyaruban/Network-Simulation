@@ -129,7 +129,7 @@ public class DataFrame {
 		this.source = source;
 	}
 
-	public boolean checkHeader(int dest, int expectedFrameNumber) {
+	public synchronized boolean checkHeader(int dest, int expectedFrameNumber) {
 //		System.out.println(header.length);
 //
 //		if (dest == header[1])
@@ -146,11 +146,11 @@ public class DataFrame {
 //			System.out.println("Right header checksum");
 //		else
 //			System.out.println("Wrong header checksum");
-
-//		if (checksum(payload) == header[PAYLOAD_CHECKSUM_INDEX]);
-////			System.out.println("Right payload checksum");
+//
+//		if (checksum(payload) == header[PAYLOAD_CHECKSUM_INDEX])
+//			System.out.println("Right payload checksum");
 //		else {
-////			System.out.println("Wrong payload checksum");
+//			System.out.println("Wrong payload checksum");
 //			System.out.println(checksum(payload) + " " + header[PAYLOAD_CHECKSUM_INDEX]);
 //			System.out.println(Arrays.toString(payload));
 //		}

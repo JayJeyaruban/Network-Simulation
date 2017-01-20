@@ -8,7 +8,6 @@
 
 package physical_network;
 
-import javax.xml.crypto.Data;
 import java.util.Arrays;
 import java.util.concurrent.*;
 
@@ -25,7 +24,7 @@ import java.util.concurrent.*;
 
 public class NetworkCard {
 
-	// Wire pair that the network card is atatched to.
+	// Wire pair that the network card is attached to.
 	private final TwistedWirePair wire;
 
 	// Unique device number and name given to the network card.
@@ -38,12 +37,14 @@ public class NetworkCard {
 
 	// Default value for a signal pulse width that should be used in milliseconds.
 	private final int PULSE_WIDTH = 200;
-
+	// TODO: 20/01/2017 Revert value to 200
 	// Default value for maximum payload size in bytes.
 	private final int MAX_PAYLOAD_SIZE = 1500;
 
 	// Default value for input & output queue sizes.
 	private final int QUEUE_SIZE = 5;
+
+	private final int TIMEOUT = 10000;
 
 	private int framesSent = 0;
 
@@ -109,7 +110,7 @@ public class NetworkCard {
 	private class TXThread extends Thread {
 
 		public void run() {
-
+			int sendAttempts = 0;
 			try {
 				while (true) {
 //					System.out.println(deviceNumber + " " + ackToSend[0]);
@@ -119,12 +120,14 @@ public class NetworkCard {
 
 					if (ackToSend[0] == 0)
 						frame.setHeader(++framesSent);
-					else
+					else {
 						System.out.println(deviceNumber + " - sending ack");
+					}
 					do {
+//						System.out.println(deviceNumber + " - Frame no: " + framesSent);
 						transmitFrame(frame);
-						// TODO: 19/01/2017 waitForAcknowledgement
-						if (!(ackToSend[0] == 0))
+						sendAttempts++;
+						if (!(ackToSend[0] == 0) || sendAttempts > 2)
 							break;
 					} while (waitingForAcknowledgement());
 				}
@@ -139,9 +142,9 @@ public class NetworkCard {
 			long time = System.currentTimeMillis();
 			while (!ackReceived) {
 				try {
-					wait(30000);
-					if (System.currentTimeMillis() - time > 30000) {
-						System.out.println("No ack.. Resending...");
+					wait(TIMEOUT);
+					if (System.currentTimeMillis() - time > TIMEOUT) {
+						System.out.println(deviceNumber + " - No ack.. Resending...");
 						return true;
 					}
 				} catch (InterruptedException e) {
@@ -221,6 +224,8 @@ public class NetworkCard {
 	 */
 	private class RXThread extends Thread {
 
+		double thresholdVoltage;
+
 		public void run() {
 
 			try {
@@ -236,7 +241,8 @@ public class NetworkCard {
 					while (true) {
 						receivedByte = receiveByte();
 
-						if ((receivedByte & 0xFF) == 0x7E) break;
+						if ((receivedByte & 0xFF) == 0x7E)
+							break;
 
 						System.out.println(deviceName + " RECEIVED BYTE = " + Integer.toHexString(receivedByte & 0xFF));
 
@@ -250,21 +256,25 @@ public class NetworkCard {
 						bytePayloadIndex++;
 
 					}
-
 					// Block receiving data if queue full.
+					System.out.println("WHAT");
 					if (bytePayloadIndex == 2) {
-//						System.out.println("Putting together ack...");
+						System.out.println(deviceNumber + " - Putting together ack...");
 						byte[] ack = Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex);
 						if (ack[0] == deviceNumber &&
 								ack[1] == framesSent)
 							receivedAck();
 					} else {
+						System.out.println(deviceNumber + " - TESTING");
 						DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
-						if (newFrame.checkHeader(deviceNumber, ++framesReceived)) {
+						if (newFrame.checkHeader(deviceNumber, framesReceived + 1)) {
+							framesReceived++;
+							System.out.println(deviceNumber + " - Hmmm..");
 							sendAcknowledgement(newFrame.getHeader()[0]);
 							if (!inputQueue.contains(newFrame))
 								inputQueue.put(newFrame);
-						}
+						} else
+							inputQueue.put(newFrame);
 					}
 				}
 
@@ -286,11 +296,12 @@ public class NetworkCard {
 
 		public byte receiveByte() throws InterruptedException {
 
-			double thresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
-//			double thresholdVoltage = 2;
+//			thresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE - ((waitingForAck) ? LOW_VOLTAGE : 0)) / 3;
+			thresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
+//			thresholdVoltage = 1.5;
 			byte value = 0;
-
 			while (wire.getVoltage(deviceName) < thresholdVoltage) {
+
 				sleep(PULSE_WIDTH / 10);
 			}
 
@@ -301,13 +312,14 @@ public class NetworkCard {
 			for (int i = 0; i < 8; i++) {
 
 				value *= 2;
-
 				if (wire.getVoltage(deviceName) > thresholdVoltage) {
 					value += 1;
+					break;
 				}
 
 				sleep(PULSE_WIDTH);
 			}
+
 			return value;
 		}
 
