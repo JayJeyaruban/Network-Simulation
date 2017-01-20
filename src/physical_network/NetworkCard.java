@@ -244,8 +244,9 @@ public class NetworkCard {
 						if ((receivedByte & 0xFF) == 0x7E)
 							break;
 
+						receivedByte = receiveByte();
+						// TODO: 19/01/2017 Uncomment print 
 						System.out.println(deviceName + " RECEIVED BYTE = " + Integer.toHexString(receivedByte & 0xFF));
-
 						// Unstuff if escaped.
 						if (receivedByte == 0x7D) {
 							receivedByte = receiveByte();
@@ -254,8 +255,9 @@ public class NetworkCard {
 
 						bytePayload[bytePayloadIndex] = receivedByte;
 						bytePayloadIndex++;
-
 					}
+
+
 					// Block receiving data if queue full.
 					System.out.println("WHAT");
 					if (bytePayloadIndex == 2) {
