@@ -228,8 +228,6 @@ public class NetworkCard {
 	 */
 	private class RXThread extends Thread {
 
-		double thresholdVoltage;
-
 		public void run() {
 
 			try {
@@ -258,10 +256,8 @@ public class NetworkCard {
 
 						bytePayload[bytePayloadIndex] = receivedByte;
 						bytePayloadIndex++;
-
 					}
 					// Block receiving data if queue full.
-					System.out.println("WHAT");
 					if (bytePayloadIndex == 2) {
 						System.out.println(deviceNumber + " - Putting together ack...");
 						byte[] ack = Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex);
@@ -317,7 +313,6 @@ public class NetworkCard {
 
 				if (wire.getVoltage(deviceName) > 0) {
 					value += 1;
-					break;
 				}
 
 				sleep(PULSE_WIDTH);
