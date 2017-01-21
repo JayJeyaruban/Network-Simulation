@@ -63,6 +63,7 @@ public class NetworkCard {
 
 	private byte[] ackToSend = {0, 0};
 	private boolean ackReceived = false;
+	private final static int TIMEOUT = 20000;
 
 	/**
 	 * NetworkCard constructor.
@@ -124,7 +125,7 @@ public class NetworkCard {
 					do {
 						transmitFrame(frame);
 						sendAttempts++;
-						if (!(ackToSend[0] == 0) || sendAttempts > 2)
+						if (!(ackToSend[0] == 0) || sendAttempts > 5)
 							break;
 					} while (waitingForAcknowledgement());
 				}
@@ -139,8 +140,8 @@ public class NetworkCard {
 			long time = System.currentTimeMillis();
 			while (!ackReceived) {
 				try {
-					wait(30000);
-					if (System.currentTimeMillis() - time > 30000) {
+					wait(TIMEOUT);
+					if (System.currentTimeMillis() - time > TIMEOUT) {
 						System.out.println("No ack.. Resending...");
 						return true;
 					}
@@ -183,8 +184,9 @@ public class NetworkCard {
 				// Append a 0x7E to terminate frame.
 				transmitByte((byte) 0x7E);
 
+//				sleep(PULSE_WIDTH * 2);
 				wire.setVoltage(deviceName, 0);
-				sleep(PULSE_WIDTH * 5);
+				sleep(PULSE_WIDTH);
 			}
 
 		}
@@ -259,9 +261,10 @@ public class NetworkCard {
 						if (ack[0] == deviceNumber &&
 								ack[1] == framesSent)
 							receivedAck();
-					} else {
+					} else if (bytePayloadIndex > 4) {
 						DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
-						if (newFrame.checkHeader(deviceNumber, ++framesReceived)) {
+						if (newFrame.checkHeader(deviceNumber, framesReceived + 1)) {
+							framesReceived++;
 							sendAcknowledgement(newFrame.getHeader()[0]);
 							if (!inputQueue.contains(newFrame))
 								inputQueue.put(newFrame);
@@ -289,7 +292,6 @@ public class NetworkCard {
 
 //			double upperThresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
 			double upperThresholdVoltage = HIGH_VOLTAGE + LOW_VOLTAGE / 3;
-//			double upperThresholdVoltage = HIGH_VOLTAGE + LOW_VOLTAGE / 3;
 //			double lowerThresholdVoltage = (HIGH_VOLTAGE + 2.0 * LOW_VOLTAGE) / 3;
 			double lowerThresholdVoltage = LOW_VOLTAGE + HIGH_VOLTAGE / 3;
 			byte value = 0;
@@ -297,14 +299,14 @@ public class NetworkCard {
 			while (!checkByteStart(upperThresholdVoltage, lowerThresholdVoltage));
 
 			// Sleep till middle of next pulse.
-			sleep(PULSE_WIDTH + PULSE_WIDTH / 2);
+			sleep(PULSE_WIDTH + PULSE_WIDTH / 4);
 
 			// Use 8 next pulses for byte.
 			for (int i = 0; i < 8; i++) {
 //				System.out.println(deviceNumber + " - i: " + i);
 				value *= 2;
 
-				if (wire.getVoltage(deviceName) > upperThresholdVoltage) {
+				if (wire.getVoltage(deviceName) > 0) {
 					value += 1;
 				}
 
