@@ -13,54 +13,53 @@
 package physical_network;
 
 /**
- * 
  * This is a test which joins two network cards together with a wire pair.
  * It then sends a data frame across the network from Network Card 1 to
  * Network Card 2.
- * 
+ * <p>
  * An oscilloscope is also connected to the wire to allow the voltage levels
  * to be monitored over time.
- * 
+ * <p>
  * A source for thermal noise can also be connected to the wire which simulates
  * noise on the network to see how robust the transmission process is to noise.
- * 
+ *
  * @author kevin-b
  */
 public class Main {
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String[] args) throws InterruptedException {
+	/**
+	 * @param args the command line arguments
+	 */
+	public static void main(String[] args) throws InterruptedException {
 
-    	// Shared twisted pair wire.
-        TwistedWirePair wire = new MyTwistedWirePair();
+		// Shared twisted pair wire.
+		TwistedWirePair wire = new MyTwistedWirePair();
 
-        // Set network card 1 running connected to the shared wire.
-        NetworkCard networkCard1 = new NetworkCard(1, wire);
-        networkCard1.init();
-        
-        // Set network card 2 running with a simple data frame listener registered.
-        NetworkCard networkCard2 = new NetworkCard(2, wire);
-        networkCard2.init();
+		// Set network card 1 running connected to the shared wire.
+		NetworkCard networkCard1 = new NetworkCard(1, wire);
+		networkCard1.init();
 
-        // Currently noise level is set to 0.0 volts on wire (the 0.0 value).
-        // Try increasing it to 3.5 volts to see if the transmission is reliable.
-        ThermalNoise thermalNoise = new ThermalNoise("Thermal Noise", 0, wire);
-        thermalNoise.start();
+		// Set network card 2 running with a simple data frame listener registered.
+		NetworkCard networkCard2 = new NetworkCard(2, wire);
+		networkCard2.init();
 
-        // Set oscilloscope monitoring the wire voltage.
-        Oscilloscope oscilloscope = new Oscilloscope("Oscilloscope", wire);
-        oscilloscope.start();
+		// Currently noise level is set to 0.0 volts on wire (the 0.0 value).
+		// Try increasing it to 3.5 volts to see if the transmission is reliable.
+		ThermalNoise thermalNoise = new ThermalNoise("Thermal Noise", 0, wire);
+		thermalNoise.start();
 
-        // Send a data frame across the link from network card 1 to network card 2.
+		// Set oscilloscope monitoring the wire voltage.
+		Oscilloscope oscilloscope = new Oscilloscope("Oscilloscope", wire);
+		oscilloscope.start();
+
+		// Send a data frame across the link from network card 1 to network card 2.
 //        DataFrame myMessage = new DataFrame("Hello World", 2);
-        DataFrame myMessage = new DataFrame("He", 2);
-        System.out.println("\n *** SENDING DATA FRAME: " + myMessage + "\n");
-        networkCard1.send(myMessage);
+		DataFrame myMessage = new DataFrame("He", 2);
+		System.out.println("\n *** SENDING DATA FRAME: " + myMessage + "\n");
+		networkCard1.send(myMessage);
 
 //        myMessage = new DataFrame("Earth calling Mars", 2);
-//        myMessage = new DataFrame("Ea", 2);
+//        myMessage = new DataFrame("Earth", 2);
 //        System.out.println("\n *** SENDING DATA FRAME: " + myMessage + "\n");
 //        networkCard1.send(myMessage);
 //
@@ -69,13 +68,13 @@ public class Main {
 //        System.out.println("\n *** SENDING DATA FRAME: " + myMessage + "\n");
 //        networkCard1.send(myMessage);
 
-        // Continuously read data frames received by network card 2.
-        while (true) {
-        	
-        	DataFrame receivedData = networkCard2.receive();
-        	System.out.println("\n *** RECEIVED: " + receivedData + "\n");
-        	
-        }
-        
-    }
+		// Continuously read data frames received by network card 2.
+		while (true) {
+
+			DataFrame receivedData = networkCard2.receive();
+			System.out.println("\n *** RECEIVED: " + receivedData + "\n");
+
+		}
+
+	}
 }
