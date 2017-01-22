@@ -64,6 +64,7 @@ public class NetworkCard {
 
 	private byte[] ackToSend = {0, 0};
 	private boolean ackReceived = false;
+	private boolean receiverSleep = false;
 
 	/**
 	 * NetworkCard constructor.
@@ -169,6 +170,8 @@ public class NetworkCard {
 
 			if (frame != null) {
 
+				sleepReceiver();
+
 				// Low voltage signal to get ready ...
 				wire.setVoltage(deviceName, LOW_VOLTAGE);
 				sleep(PULSE_WIDTH * 4);
@@ -189,10 +192,23 @@ public class NetworkCard {
 				transmitByte((byte) 0x7E);
 
 //				sleep(PULSE_WIDTH * 2);
+				wakeReceiver();
 				wire.setVoltage(deviceName, 0);
 				sleep(PULSE_WIDTH);
 			}
 
+		}
+
+		private void sleepReceiver() throws InterruptedException {
+			synchronized (rxThread) {
+				rxThread.wait();
+			}
+		}
+
+		private void wakeReceiver() {
+			synchronized (rxThread) {
+				rxThread.notify();
+			}
 		}
 
 		private void transmitByte(byte value) throws InterruptedException {
@@ -265,6 +281,16 @@ public class NetworkCard {
 				System.out.println(deviceName + " Interrupted: " + getName());
 			}
 
+		}
+
+		private boolean canRun() {
+			while(receiverSleep) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+
+				}
+			}
 		}
 
 		private void checkFrameData(int bytePayloadIndex, byte[] bytePayload) throws  InterruptedException {
