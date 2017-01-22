@@ -20,8 +20,8 @@ import java.util.Arrays;
 
 public class DataFrame {
 
-	private final static int HEADER_CHECKSUM_INDEX = 3;
-	private final static int PAYLOAD_CHECKSUM_INDEX = 4;
+	private final static int CHECKSUM_INDEX = 3;
+	private final static int HEADER_INDEX = 4;
 	private byte[] payload;
 	private int destination = 0;
 	private int source = 0;
@@ -39,8 +39,8 @@ public class DataFrame {
 	}
 
 	public DataFrame(byte[] input) {
-		this.header = Arrays.copyOfRange(input, 0, PAYLOAD_CHECKSUM_INDEX + 1);
-		this.payload = Arrays.copyOfRange(input, PAYLOAD_CHECKSUM_INDEX + 1, input.length);
+		this.header = Arrays.copyOfRange(input, 0, HEADER_INDEX + 1);
+		this.payload = Arrays.copyOfRange(input, HEADER_INDEX + 1, input.length);
 	}
 
 	public DataFrame() {
@@ -90,16 +90,20 @@ public class DataFrame {
 		return frame;
 	}
 
-	private static byte checksum(byte[] buffer) {
+	private static byte[] checksum(byte[] buffer) {
 		short sum = 0;
 		int buffSize = buffer.length;
-		for (int i = 0; i < buffSize; i++) {
-			sum += buffer[i];
-		}
+		for (byte b : buffer)
+			sum += b;
 
-		sum = (sum > 255) ? (short) ((sum  & 0xFF) + 1) : sum;
+		sum = (sum > 255) ? (short) ((sum  & 0xFFFF) + 1) : sum;
 
-		return (byte) ~sum;
+		byte[] output = {
+				(byte) ((sum >> 8) & 0xff),
+				(byte) (sum & 0xff)
+		};
+
+		return output;
 	}
 
 	public byte[] getHeader() {
@@ -117,12 +121,16 @@ public class DataFrame {
 	}
 
 	private void makeHeader() {
-		header = new byte[PAYLOAD_CHECKSUM_INDEX + 1];
+		byte[] frameNoChecksum = new byte[CHECKSUM_INDEX + payload.length];
+		System.arraycopy(header, 0, frameNoChecksum, 0, CHECKSUM_INDEX);
+		System.arraycopy(payload, 0, frameNoChecksum, CHECKSUM_INDEX, payload.length);
+		byte[] checksum = checksum(frameNoChecksum);
+		header = new byte[HEADER_INDEX + 1];
 		header[0] = (byte) source;
 		header[1] = (byte) destination;
 		header[2] = (byte) frameNumber;
-		header[HEADER_CHECKSUM_INDEX] = checksum(Arrays.copyOfRange(header, 0, HEADER_CHECKSUM_INDEX));
-		header[PAYLOAD_CHECKSUM_INDEX] = checksum(payload);
+		header[CHECKSUM_INDEX] = checksum[0];
+		header[HEADER_INDEX] = checksum[1];
 	}
 
 	public void setSource(int source) {
@@ -142,23 +150,23 @@ public class DataFrame {
 //		else
 //			System.out.println("Wrong frame");
 //
-//		if (checksum(Arrays.copyOfRange(header, 0, HEADER_CHECKSUM_INDEX)) == header[HEADER_CHECKSUM_INDEX])
+//		if (checksum(Arrays.copyOfRange(header, 0, CHECKSUM_INDEX)) == header[CHECKSUM_INDEX])
 //			System.out.println("Right header checksum");
 //		else
 //			System.out.println("Wrong header checksum");
 //
-//		if (checksum(payload) == header[PAYLOAD_CHECKSUM_INDEX])
+//		if (checksum(payload) == header[HEADER_INDEX])
 //			System.out.println("Right payload checksum");
 //		else {
 //			System.out.println("Wrong payload checksum");
-//			System.out.println(checksum(payload) + " " + header[PAYLOAD_CHECKSUM_INDEX]);
+//			System.out.println(checksum(payload) + " " + header[HEADER_INDEX]);
 //			System.out.println(Arrays.toString(payload));
 //		}
 
 		return (dest == header[1] &&
 				expectedFrameNumber == header[2] &&
-				checksum(Arrays.copyOfRange(header, 0, HEADER_CHECKSUM_INDEX)) == header[HEADER_CHECKSUM_INDEX] &&
-				checksum(payload) == header[PAYLOAD_CHECKSUM_INDEX]);
+				checksum(Arrays.copyOfRange(header, 0, CHECKSUM_INDEX)) == header[CHECKSUM_INDEX] &&
+				checksum(payload) == header[HEADER_INDEX]);
 
 	}
 }
