@@ -258,29 +258,32 @@ public class NetworkCard {
 						bytePayloadIndex++;
 					}
 					// Block receiving data if queue full.
-					if (bytePayloadIndex == 2) {
-						System.out.println(deviceNumber + " - Putting together ack...");
-						byte[] ack = Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex);
-						if (ack[0] == deviceNumber &&
-								ack[1] == framesSent)
-							receivedAck();
-					} else if (bytePayloadIndex > 4) {
-						System.out.println(deviceNumber + " - TESTING");
-						DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
-						if (newFrame.checkHeader(deviceNumber, framesReceived + 1)) {
-							framesReceived++;
-							sendAcknowledgement(newFrame.getHeader()[0]);
-							if (!inputQueue.contains(newFrame))
-								inputQueue.put(newFrame);
-						} else
-							inputQueue.put(newFrame);
-					}
+					checkFrameData(bytePayloadIndex, bytePayload);
 				}
 
 			} catch (InterruptedException except) {
 				System.out.println(deviceName + " Interrupted: " + getName());
 			}
 
+		}
+
+		private void checkFrameData(int bytePayloadIndex, byte[] bytePayload) throws  InterruptedException {
+			if (bytePayloadIndex == 2) {
+				System.out.println(deviceNumber + " - Putting together ack...");
+				byte[] ack = Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex);
+				if (ack[0] == deviceNumber && ack[1] == framesSent)
+					receivedAck();
+			} else if (bytePayloadIndex > 4) {
+				System.out.println(deviceNumber + " - TESTING");
+				DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
+				if (newFrame.checkHeader(deviceNumber, framesReceived + 1)) {
+					framesReceived++;
+					sendAcknowledgement(newFrame.getHeader()[0]);
+					if (!inputQueue.contains(newFrame))
+						inputQueue.put(newFrame);
+				} else
+					inputQueue.put(newFrame);
+			}
 		}
 
 		private void receivedAck() {
