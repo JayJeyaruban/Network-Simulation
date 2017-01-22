@@ -92,7 +92,6 @@ public class DataFrame {
 
 	private static byte[] checksum(byte[] buffer) {
 		short sum = 0;
-		int buffSize = buffer.length;
 		for (byte b : buffer)
 			sum += b;
 
@@ -121,14 +120,16 @@ public class DataFrame {
 	}
 
 	private void makeHeader() {
-		byte[] frameNoChecksum = new byte[CHECKSUM_INDEX + payload.length];
-		System.arraycopy(header, 0, frameNoChecksum, 0, CHECKSUM_INDEX);
-		System.arraycopy(payload, 0, frameNoChecksum, CHECKSUM_INDEX, payload.length);
-		byte[] checksum = checksum(frameNoChecksum);
 		header = new byte[HEADER_INDEX + 1];
 		header[0] = (byte) source;
 		header[1] = (byte) destination;
 		header[2] = (byte) frameNumber;
+
+		byte[] frameNoChecksum = new byte[CHECKSUM_INDEX + payload.length];
+		System.arraycopy(header, 0, frameNoChecksum, 0, CHECKSUM_INDEX);
+		System.arraycopy(payload, 0, frameNoChecksum, CHECKSUM_INDEX, payload.length);
+		byte[] checksum = checksum(frameNoChecksum);
+
 		header[CHECKSUM_INDEX] = checksum[0];
 		header[HEADER_INDEX] = checksum[1];
 	}
@@ -138,6 +139,11 @@ public class DataFrame {
 	}
 
 	public synchronized boolean checkHeader(int dest, int expectedFrameNumber) {
+		byte[] frameNoChecksum = new byte[header.length - 1 + payload.length];
+		System.arraycopy(header, 0, frameNoChecksum, 0, header.length - 1);
+		System.arraycopy(payload, 0, frameNoChecksum, header.length - 1, payload.length);
+		byte[] checksum = checksum(frameNoChecksum);
+
 //		System.out.println(header.length);
 //
 //		if (dest == header[1])
@@ -149,24 +155,12 @@ public class DataFrame {
 //			System.out.println("Right frame");
 //		else
 //			System.out.println("Wrong frame");
-//
-//		if (checksum(Arrays.copyOfRange(header, 0, CHECKSUM_INDEX)) == header[CHECKSUM_INDEX])
-//			System.out.println("Right header checksum");
-//		else
-//			System.out.println("Wrong header checksum");
-//
-//		if (checksum(payload) == header[HEADER_INDEX])
-//			System.out.println("Right payload checksum");
-//		else {
-//			System.out.println("Wrong payload checksum");
-//			System.out.println(checksum(payload) + " " + header[HEADER_INDEX]);
-//			System.out.println(Arrays.toString(payload));
-//		}
+// TODO: 22/01/2017 Rewrite checksum debug prints
 
 		return (dest == header[1] &&
 				expectedFrameNumber == header[2] &&
-				checksum(Arrays.copyOfRange(header, 0, CHECKSUM_INDEX)) == header[CHECKSUM_INDEX] &&
-				checksum(payload) == header[HEADER_INDEX]);
+				checksum[0] == header[CHECKSUM_INDEX] &&
+				checksum[1] == header[HEADER_INDEX]);
 
 	}
 }
