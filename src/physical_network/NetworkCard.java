@@ -274,15 +274,16 @@ public class NetworkCard {
 				if (ack[0] == deviceNumber && ack[1] == framesSent)
 					receivedAck();
 			} else if (bytePayloadIndex > 4) {
-				System.out.println(deviceNumber + " - TESTING");
+				System.out.println(deviceNumber + " - Frame received");
 				DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
 				if (newFrame.checkHeader(deviceNumber, framesReceived + 1)) {
+					System.out.println(deviceNumber + " - Valid frame");
 					framesReceived++;
 					sendAcknowledgement(newFrame.getHeader()[0]);
 					if (!inputQueue.contains(newFrame))
 						inputQueue.put(newFrame);
 				} else
-					inputQueue.put(newFrame);
+					System.out.println(deviceNumber + " - Corrupt frame");
 			}
 		}
 
