@@ -90,6 +90,9 @@ public class DataFrame {
 		return frame;
 	}
 
+	/*
+	 * Implements the internet checksum
+	 */
 	private static byte[] checksum(byte[] buffer) {
 		int sum = 0;
 		for (byte b : buffer)
@@ -143,19 +146,6 @@ public class DataFrame {
 		System.arraycopy(header, 0, frameNoChecksum, 0, header.length - 1);
 		System.arraycopy(payload, 0, frameNoChecksum, header.length - 1, payload.length);
 		byte[] checksum = checksum(frameNoChecksum);
-
-//		System.out.println(header.length);
-//
-//		if (dest == header[1])
-//			System.out.println("Right dest");
-//		else
-//			System.out.println("Wrong dest");
-//
-//		if (expectedFrameNumber == header[2])
-//			System.out.println("Right frame");
-//		else
-//			System.out.println("Wrong frame");
-// TODO: 22/01/2017 Rewrite checksum debug prints
 
 		return (dest == header[1] &&
 				expectedFrameNumber == header[2] &&

@@ -37,7 +37,7 @@ public class NetworkCard {
 
 	// Default value for a signal pulse width that should be used in milliseconds.
 	private final int PULSE_WIDTH = 200;
-	// TODO: 20/01/2017 Revert value to 200
+
 	// Default value for maximum payload size in bytes.
 	private final int MAX_PAYLOAD_SIZE = 1500;
 
@@ -62,11 +62,15 @@ public class NetworkCard {
 	// Receiver thread.
 	private Thread rxThread;
 
+	/*
+	 * Initial value is the destination of the acknowledgement. 0 implies no acknowledgement to be sent.
+	 * Second value is the sequence number.
+	 */
 	private byte[] ackToSend = {0, 0};
 	private boolean ackReceived = false;
 	private static final int MAX_TRANSMISSIONS = 5;
 
-	/**
+	/*
 	 * NetworkCard constructor.
 	 *
 	 * @param deviceName This provides the name of this device, i.e. "Network Card A".
@@ -128,9 +132,10 @@ public class NetworkCard {
 //						System.out.println(deviceNumber + " - Frame no: " + framesSent);
 						transmitFrame(frame);
 
-						if (ackToSend[0] != 0)
+						if (ackToSend[0] != 0) {
+							ackToSend[0] = 0;
 							break;
-						else {
+						} else {
 							sendAttempts++;
 							if (sendAttempts > MAX_TRANSMISSIONS)
 								break;
