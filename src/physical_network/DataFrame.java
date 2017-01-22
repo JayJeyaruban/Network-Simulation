@@ -91,11 +91,11 @@ public class DataFrame {
 	}
 
 	private static byte[] checksum(byte[] buffer) {
-		short sum = 0;
+		int sum = 0;
 		for (byte b : buffer)
 			sum += b;
 
-		sum = (sum > 255) ? (short) ((sum  & 0xFFFF) + 1) : sum;
+		sum = (sum > Short.MAX_VALUE) ? (short) ((sum  & 0xFFFF) + 1) : sum;
 
 		byte[] output = {
 				(byte) ((sum >> 8) & 0xff),
