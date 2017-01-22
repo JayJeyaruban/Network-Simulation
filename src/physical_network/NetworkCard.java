@@ -68,6 +68,7 @@ public class NetworkCard {
 	 */
 	private byte[] ackToSend = {0, 0};
 	private boolean ackReceived = false;
+
 	private static final int MAX_TRANSMISSIONS = 5;
 
 	/*
@@ -153,6 +154,10 @@ public class NetworkCard {
 
 		}
 
+		/*
+		 * Sleeps thread until woken by rxThread confirming an acknowledgement
+		 * or timeout period has passed.
+		 */
 		private synchronized boolean waitingForAcknowledgement() {
 			System.out.println(deviceNumber + " - waiting for ack..");
 			long time = System.currentTimeMillis();
@@ -281,6 +286,9 @@ public class NetworkCard {
 
 		}
 
+		/*
+		 * Checks received data is a valid frame or acknowledgement
+		 */
 		private void checkFrameData(int bytePayloadIndex, byte[] bytePayload) throws InterruptedException {
 			if (bytePayloadIndex == 2) {
 				System.out.println(deviceNumber + " - Putting together ack...");
@@ -301,11 +309,12 @@ public class NetworkCard {
 			}
 		}
 
+		/*
+		 * Wakes txThread after confirming acknowledgement is received.
+		 */
 		private void receivedAck() {
 			System.out.println(deviceNumber + " - Announcing ack received.");
 			ackReceived = true;
-//			notifyAll();
-//			txThread.notify();
 			synchronized (txThread) {
 				txThread.notify();
 			}
@@ -313,9 +322,7 @@ public class NetworkCard {
 
 		public byte receiveByte() throws InterruptedException {
 
-//			double upperThresholdVoltage = (LOW_VOLTAGE + 2.0 * HIGH_VOLTAGE) / 3;
 			double upperThresholdVoltage = HIGH_VOLTAGE + LOW_VOLTAGE / 3;
-//			double lowerThresholdVoltage = (HIGH_VOLTAGE + 2.0 * LOW_VOLTAGE) / 3;
 			double lowerThresholdVoltage = LOW_VOLTAGE + HIGH_VOLTAGE / 3;
 			byte value = 0;
 
@@ -339,6 +346,10 @@ public class NetworkCard {
 			return value;
 		}
 
+		/*
+		 * Checks for when a valid byte is about to be sent.
+		 * Prevents false results during timeout period from being read.
+		 */
 		private boolean checkByteStart(double upperV, double lowerV) throws InterruptedException {
 			while (wire.getVoltage(deviceName) > lowerV) {
 				sleep(PULSE_WIDTH / 10);
@@ -359,8 +370,11 @@ public class NetworkCard {
 				return false;
 		}
 
+		/*
+		 * Makes acknowledgement and adds it to outputQueue for txThread to send.
+		 * Makes a frame consisting of 2 bytes.
+		 */
 		private void sendAcknowledgement(int dest) throws InterruptedException {
-//			System.out.println("test " + dest);
 			ackToSend[0] = (byte) dest;
 			ackToSend[1] = (byte) framesReceived;
 			DataFrame dataFrame = new DataFrame();
