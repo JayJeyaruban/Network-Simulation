@@ -65,6 +65,7 @@ public class NetworkCard {
 	private byte[] ackToSend = {0, 0};
 	private boolean ackReceived = false;
 	private boolean receiverSleep = false;
+	private static final int MAX_TRANSMISSIONS = 5;
 
 	/**
 	 * NetworkCard constructor.
@@ -127,12 +128,20 @@ public class NetworkCard {
 					do {
 //						System.out.println(deviceNumber + " - Frame no: " + framesSent);
 						transmitFrame(frame);
-						sendAttempts++;
 
-						if (!(ackToSend[0] == 0) || sendAttempts > 5)
+						if (ackToSend[0] != 0)
 							break;
+						else {
+							sendAttempts++;
+							if (sendAttempts > MAX_TRANSMISSIONS)
+								break;
+						}
 
 					} while (waitingForAcknowledgement());
+					if (sendAttempts > MAX_TRANSMISSIONS) {
+						System.out.println(deviceNumber + " - " + MAX_TRANSMISSIONS + " transmissions attempted. Terminating transmission.");
+						break;
+					}
 				}
 			} catch (InterruptedException except) {
 				System.out.println(deviceName + " Transmitter Thread Interrupted - terminated.");
@@ -291,24 +300,26 @@ public class NetworkCard {
 
 				}
 			}
+			return true;
 		}
 
-		private void checkFrameData(int bytePayloadIndex, byte[] bytePayload) throws  InterruptedException {
+		private void checkFrameData(int bytePayloadIndex, byte[] bytePayload) throws InterruptedException {
 			if (bytePayloadIndex == 2) {
 				System.out.println(deviceNumber + " - Putting together ack...");
 				byte[] ack = Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex);
 				if (ack[0] == deviceNumber && ack[1] == framesSent)
 					receivedAck();
 			} else if (bytePayloadIndex > 4) {
-				System.out.println(deviceNumber + " - TESTING");
+				System.out.println(deviceNumber + " - Frame received");
 				DataFrame newFrame = new DataFrame(Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex));
 				if (newFrame.checkHeader(deviceNumber, framesReceived + 1)) {
+					System.out.println(deviceNumber + " - Valid frame");
 					framesReceived++;
 					sendAcknowledgement(newFrame.getHeader()[0]);
 					if (!inputQueue.contains(newFrame))
 						inputQueue.put(newFrame);
 				} else
-					inputQueue.put(newFrame);
+					System.out.println(deviceNumber + " - Corrupt frame");
 			}
 		}
 
