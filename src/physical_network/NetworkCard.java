@@ -64,6 +64,7 @@ public class NetworkCard {
 
 	private byte[] ackToSend = {0, 0};
 	private boolean ackReceived = false;
+	private static final int MAX_TRANSMISSIONS = 5;
 
 	/**
 	 * NetworkCard constructor.
@@ -126,12 +127,20 @@ public class NetworkCard {
 					do {
 //						System.out.println(deviceNumber + " - Frame no: " + framesSent);
 						transmitFrame(frame);
-						sendAttempts++;
 
-						if (!(ackToSend[0] == 0) || sendAttempts > 5)
+						if (ackToSend[0] != 0)
 							break;
+						else {
+							sendAttempts++;
+							if (sendAttempts > MAX_TRANSMISSIONS)
+								break;
+						}
 
 					} while (waitingForAcknowledgement());
+					if (sendAttempts > MAX_TRANSMISSIONS) {
+						System.out.println(deviceNumber + " - " + MAX_TRANSMISSIONS + " transmissions attempted. Terminating transmission.");
+						break;
+					}
 				}
 			} catch (InterruptedException except) {
 				System.out.println(deviceName + " Transmitter Thread Interrupted - terminated.");
@@ -267,7 +276,7 @@ public class NetworkCard {
 
 		}
 
-		private void checkFrameData(int bytePayloadIndex, byte[] bytePayload) throws  InterruptedException {
+		private void checkFrameData(int bytePayloadIndex, byte[] bytePayload) throws InterruptedException {
 			if (bytePayloadIndex == 2) {
 				System.out.println(deviceNumber + " - Putting together ack...");
 				byte[] ack = Arrays.copyOfRange(bytePayload, 0, bytePayloadIndex);
